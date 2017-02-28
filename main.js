@@ -51,6 +51,7 @@ arianaBot.on ('message', message => {
 		console.log(message.author.username + " has set my status to " + params);
 	    } else {
 		message.reply("lol no :rolling_eyes:");
+	    }
 	    break;
 	case "!settopic": //mod command
 	    if(isMod(message)) {
