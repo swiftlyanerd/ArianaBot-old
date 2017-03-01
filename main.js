@@ -3,10 +3,10 @@ const config = require("./auth.json");
 
 const arianaBot = new Discord.Client();
 
-var version = "2017.02.27a";
+var version = "2017.02.28a";
 
 arianaBot.on ("ready", () => {
-    console.log("Ready!");
+    console.log("Logged in as " + arianaBot.user.username + " - " + arianaBot.user.id + "\nReady!");
 });
 
 arianaBot.on ('message', message => {
@@ -38,45 +38,100 @@ arianaBot.on ('message', message => {
             }
             break;
         case "!rules":
-            message.channel.sendMessage("__Rules__:\n1) Don't be a dick\n2) No NSFW pictures\n3)No spamming pictures, however " +
-	    "you can spam Ariana pictures in #cutie_cave\n4) Please always keep the topic of conversation in #arianatalk about " +
-	    "Ariana, other discussions can be done in #dangerouswoman or #cutie_cave");
+            message.channel.sendMessage("__Rules__:\n1) Don't be a dick\n2) No NSFW pictures\n3) No spamming pictures, however " +
+	    "you can spam Ariana pictures in <#285538056772255754>\n4) Please always keep the topic of conversation in <#285890540988268555> about " +
+	    "Ariana. Other discussions can be held in <#285493585120591892> or <#285538056772255754>");
 	    break;
         case "!setalbum":
             favoriteAlbum(message);
             break;
-	case "!setstatus": //mod command
+        case "!version":
+            message.channel.sendMessage("Current version: " + version);
+            break;
+	//mod commands
+        case "!ban":
+	    var userToBan = message.mentions.users.first();
+	    if(isMod(message)) {
+                message.guild.member(userToBan).ban();
+		message.reply(userToBan.username + " was banned from the server! :open_mouth:");
+		modlog(userToBan.username + " was banned from the server by " + message.author.username + ".");
+	    } else {
+	        message.reply("lol no :rolling_eyes:");
+	    }
+	    break;
+	case "!kick":
+	    var userToKick = message.mentions.users.first();
+	    if(isMod(message)) {
+                message.guild.member(userToKick).kick();
+		message.reply(userToKick.username + " was kicked from the server! :open_mouth:");
+		modlog(userToKick.username + " was kicked from the server by " + message.author.username + ".");
+	    } else {
+	        message.reply("lol no :rolling_eyes:");
+	    }
+	    break;
+	case "!mute":
+	    var userToMute = message.mentions.users.first();
 	    if (isMod(message)) {
-		arianaBot.user.setGame(params);
-		console.log(message.author.username + " has set my status to " + params);
+	        message.channel.overwritePermissions(userToMute, {SEND_MESSAGES: false });
+		message.reply(userToMute.username + " was muted! :open_mouth:");
+		modlog(userToMute.username + " was muted by " + message.author.username + " in " + message.channel.name + ".");
 	    } else {
 		message.reply("lol no :rolling_eyes:");
 	    }
 	    break;
-	case "!settopic": //mod command
+	case "!unmute":
+	    var userToUnmute = message.mentions.users.first();
+	    if (isMod(message)) {
+	        message.channel.overwritePermissions(userToUnmute, {SEND_MESSAGES: null });
+		message.reply(userToUnmute.username + " was unmuted! :open_mouth:");
+		modlog(userToUnmute.username + " was unmuted by " + message.author.username + " in " + message.channel.name + ".");
+	    } else {
+		message.reply("lol no :rolling_eyes:");
+	    }
+	    break
+	case "!setstatus":
+	    if (isMod(message)) {
+		arianaBot.user.setGame(params);
+		log(message.author.username + " has set my status to " + params);
+	    } else {
+		message.reply("lol no :rolling_eyes:");
+	    }
+	    break;
+	case "!settopic":
 	    if(isMod(message)) {
 	        message.channel.setTopic(params);
 		message.reply("topic updated.");
-		console.log(message.author.username + " changed the topic in " + message.channel.name + " to " + params);
+		log(message.author.username + " changed the topic in " + message.channel.name + " to " + params);
 		} else {
 		    message.reply("lol no :rolling_eyes:");
 		}
             break;
-        case "!speak": //mod command
+        case "!speak": 
             if(isMod(message)) {
                 message.delete();
                 message.channel.sendMessage(params);
             }
             break;
-        case "!version":
-            message.channel.sendMessage("Current version: " + version);
-            break;
+        //admin commands
+	case "!restart":
+            if(message.member.roles.exists("name", "Moonlight")) {
+		log("I was restarted by " + message.author.username + ".");
+	        process.exit(-1);
+	    } else {
+	        message.reply("lol no :rolling_eyes:");
+		log(message.author.username + " attempted to restart me.");
+	    }
+	    break;
         }
 });
 
-arianaBot.on ("guildMemberAdd", (member) => {
+arianaBot.on("guildMemberAdd", (member) => {
     member.guild.channels.get(member.guild.id).sendMessage(member.user.username + " has joined the server! :smiley:");
-    console.log(member.user.username + " joined " + member.guild.name);
+    modlog(member.user.username + " joined " + member.guild.name);
+});
+
+arianaBot.on("guildMemberRemove", (member) => {
+    modlog(member.user.username + " has either been kicked or left the server.");
 });
 
 function clean(text) {
@@ -126,30 +181,44 @@ function favoriteAlbum(message) {
         case "dangerous woman":
             message.member.addRole(dangerousWoman);
             message.reply("your favorite album has been set to Dangerous Woman. :smiley:");
-            console.log(message.author.username + " has added themselves to the Dangerous Woman role.");
+            log(message.author.username + " has added themselves to the Dangerous Woman role.");
             break;
         case "me":
         case "my everything":
             message.member.addRole(myEverything);
-            message.reply("your favorite album has been set to My Everything. :smiley:");
-            console.log(message.author.username + " has added themselves to the My Everything role.");
+	    message.reply("your favorite album has been set to My Everything. :smiley:");
+            log(message.author.username + " has added themselves to the My Everything role.");
             break;
         case "yt":
         case "yours truly":
             message.member.addRole(yoursTruly);
             message.reply("your favorite album has been set to Yours Truly. :smiley:");
-            console.log(message.author.username + " has added themselves to the Yours Truly role.");
+            log(message.author.username + " has added themselves to the Yours Truly role.");
             break;
 	case "clear":
 	    clearAlbum(message);
 	    message.reply("your favorite album has been cleared. :frowning:");
-	    console.log(message.author.username + " has cleared their favorite album. Appropriate roles have been removed.");
+	    log(message.author.username + " has cleared their favorite album. Appropriate roles have been removed.");
 	    break;
     }
 }
 
 function isMod(message) {
     return message.member.roles.exists("name", "Moonlight") || message.member.roles.exists("name", "Be Alright");
+}
+
+function log(message) {
+    arianaBot.users.get("147109473155022848").sendMessage(message); //Fearless Swiftie
+    console.log(message);
+}
+
+function modlog(message) {
+    arianaBot.users.get("147109473155022848").sendMessage(message); //Fearless Swiftie
+    arianaBot.users.get("163245022181982208").sendMessage(message); //joeyer5
+    arianaBot.users.get("118197472232341511").sendMessage(message); //SavoyRoad
+    arianaBot.users.get("115631289201065993").sendMessage(message); //Compressirk
+    arianaBot.users.get("244629699521675265").sendMessage(message); //Lindsey
+    console.log(message);
 }
 
 arianaBot.login(config.token);
