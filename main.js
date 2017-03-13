@@ -59,10 +59,11 @@ arianaBot.on ("message", message => {
 		    modlog(target.username + " was banned from the server by " + message.author.username + ".");
 	        } else {
 	            message.reply("lol no :rolling_eyes:");
-	        } }  catch(err) {
+	        }
+            }  catch(err) {
                     console.log(err);
                     message.reply("user `" + params + "` was not found on the server. :frowning:");
-                }
+            }
 	    break;
 	case "!kick":
             try {
@@ -72,10 +73,11 @@ arianaBot.on ("message", message => {
 		    modlog(target.username + " was kicked from the server by " + message.author.username + ".");
 	        } else {
 	            message.reply("lol no :rolling_eyes:");
-	        } } catch(err) {
+	        }
+            } catch(err) {
                     console.log(err);
                     message.reply("user `" + params + "` was not found on the server. :frowning:");
-                }
+            }
 	    break;
 	case "!mute":
             try {
@@ -85,10 +87,11 @@ arianaBot.on ("message", message => {
 		    modlog(target.username + " was muted by " + message.author.username + " in " + message.channel.name + ".");
 	        } else {
 		    message.reply("lol no :rolling_eyes:");
-	        } } catch (err) {
+	        } 
+            } catch (err) {
                     console.log(err);
                     message.reply("user `" + params + "` was not found on the server. :frowning:");
-                }
+            }
 	    break;
 	case "!unmute":
             try {
@@ -98,10 +101,11 @@ arianaBot.on ("message", message => {
 		    modlog(target.username + " was unmuted by " + message.author.username + " in " + message.channel.name + ".");
 	        } else {
 		    message.reply("lol no :rolling_eyes:");
-	        } } catch (err) {
+	        }
+            } catch (err) {
                     console.log(err);
                     message.reply("user `" + params + "` was not found on the server. :frowning:");
-                }
+            }
 	    break;
 	case "!setstatus":
 	    if (isMod(message)) {
