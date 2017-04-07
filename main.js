@@ -1,28 +1,57 @@
 const Discord = require("discord.js");
 const config = require("./auth.json");
+const mysql = require("mysql");
+const aridb = mysql.createConnection({
+    host: config.sqlHost,
+    user: config.sqlUser,
+    password: config.sqlPass,
+    database: config.sqlDB,
+    charset: "utf8mb4"
+});
 
 const arianaBot = new Discord.Client();
 
-var version = "2017.03.12b";
+var version = "2017.04.07a";
+
+var arianaSongs = ["Honeymoon Avenue", "Baby I", "Right There", "Tattooed Heart", "Lovin' It", "Piano", "Daydreamin'",
+"The Way", "You'll Never Know", "Almost Is Never Enough", "Popular Song", "Better Left Unsaid", "Intro", "Problem", "One Last Time",
+"Why Try", "Break Free", "Best Mistake", "Be My Baby", "Break Your Heart Right Back", "Love Me Harder", "Just A Little Bit Of Your Heart",
+"Hands On Me", "My Everything", "Moonlight", "Dangerous Woman", "Be Alright", "Into You", "Side To Side", "Let Me Love You", "Greedy",
+"Leave Me Lonely", "Everyday", "Sometimes", "I Don't Care", "Bad Decisions", "Touch It", "Knew Better / Forever Boy", "Thinkin' Bout You"];
+
+var arianaAlbums = ["Yours Truly", "My Everything", "Dangerous Woman"];
 
 arianaBot.on ("ready", () => {
     console.log("Logged in as " + arianaBot.user.username + " - " + arianaBot.user.id + "\nReady!");
 });
 
 arianaBot.on ("message", message => {
+    var user = message.author;
     var command = message.content.split(" ");
     var params = command.slice(1, command.length).join(" ");
 
     var target = message.mentions.users.first();
 
+    /* This adds and keeps users up to date on the database for the economy system to function properly */
+    aridb.query("INSERT INTO members (id, username, discriminator, server) VALUES (?, ?, ?, ?)" +
+    "ON DUPLICATE KEY UPDATE username = ?",
+    [user.id, user.username, user.discriminator, message.guild.id, user.username]);
+
     switch(command[0].toLowerCase()) {
         case "!avatar":
             userAvatar(message);
             break;
+        case "!album":
+            var album = arianaAlbums[Math.floor(Math.random() * arianaAlbums.length)];
+            message.reply("You should listen to `" + album + "`.");
+            break;
         case "!commands":
         case "!help":
 	    message.channel.sendMessage("__My Commands__:\n```json\n\"!avatar\": Posts a link to your avatar. Mention a user to get their avatar." +
-            "\n\"!commands, !help\": Displays my available commands.\n\"!rules\": Displays the rules" + 
+            "\n\"!commands, !help\": Displays my available commands." +
+            "\n\"!gift, !give\": Gives a selected amount of your Moonlight to a mentioned user. Usage: !gift/give <amount> <user>" +
+            "\n\"!moonlight\": Displays the amount of Moonlight you have. Mention a user to see their Moonlight." +
+            "\n\"!rules\": Displays the rules" + 
             "\n\"!setalbum\": Grants you a role based on what your favorite album is.\n\"!version\": Displays the current version the bot is running on." +
             "\n\"!serverinfo, !sinfo\": Displays the server's information." +
             "\n\"!userinfo, !uinfo\": Displays your account's information. Mention a user to see their account information.\n```");
@@ -35,6 +64,10 @@ arianaBot.on ("message", message => {
             "\nMembers: " + server.memberCount + "\nChannels: " + server.channels.size +
             "\nRegion: " + server.region +  "```\n" + server.iconURL);
             break;
+        case "!ping":
+            var ping = Date.now() - message.createdTimestamp;
+            message.channel.sendMessage("Response Time: `" + ping + " ms`.");
+            break;
         case "!rules":
             message.channel.sendMessage("__Rules__:\n1) Don't be a dick\n2) No NSFW pictures\n3) No spamming pictures, however " +
 	    "you can spam Ariana pictures in <#285538056772255754>\n4) Please always keep the topic of conversation in <#285890540988268555> about " +
@@ -43,6 +76,10 @@ arianaBot.on ("message", message => {
         case "!setalbum":
             favoriteAlbum(message);
             break;
+        case "!song":
+            var song = arianaSongs[Math.floor(Math.random() * arianaSongs.length)];
+            message.reply("You should listen to `" + song + "`.");
+            break;
         case "!userinfo":
         case "!uinfo":
             userInfo(message);
@@ -50,7 +87,89 @@ arianaBot.on ("message", message => {
         case "!version":
             message.channel.sendMessage("Current version: " + version);
             break;
-	//mod commands
+    //economy commands
+        case "!gift":
+        case "!give":
+            var notMentionedUser = command.slice(2, command.length).join(" ");
+            aridb.query("SELECT moonlight FROM members WHERE id = ?", [user.id], (err, result) => {
+                if(result[0]['moonlight'] == 0) {
+                    message.reply("you don't have any Moonlight. :frowning:");
+                } else if(command[1] > result[0]['moonlight']) {
+                    message.reply("you don't have that much Moonlight. :smirk:");
+                } else if(command[1] == null) {
+                    message.reply("you didn't specify the amount of Moonlight you want to give. Usage: `!give/gift <amount> <user>`");
+                } else if(command[2] == null) {
+                    message.reply("you didn't specify which user you want to give Moonlight to. Usage `!reward <amount> <user>`");
+                } else {
+                    try {
+                        aridb.query("SELECT * FROM members WHERE id = ?", [target.id], (err, result) => {
+                            if(result[0] == null)
+                                message.reply("user `" + target.username + "` was not found on the server. :frowning:");
+                        });
+                        aridb.query("UPDATE members SET moonlight = moonlight - ? WHERE id = ?", [command[1], user.id], (err, result) => {
+                            aridb.query("UPDATE members SET moonlight = moonlight + ? WHERE id = ?", [command[1], target.id], (err, result) => {
+                                message.reply("you gave `" + command[1] + "` Moonlight to `" + target.username + "`.");
+                            });
+                        });
+                    } catch(error) {
+                        console.log(error);
+                        message.reply("user `" + notMentionedUser + "` was not found on the server. :frowning:");
+                    }
+                }
+            });
+            break;
+        case "!moonlight":
+           if(command[1] == null) {
+               aridb.query("SELECT moonlight FROM members WHERE id = ?", [user.id], (err, result) => { 
+                   if(result[0]['moonlight'] == 0) {
+                       message.reply("you don't have any Moonlight. :frowning:");
+                   } else {
+                       message.reply("you have `" + result[0]['moonlight'] + "` Moonlight!");
+                   }
+               });
+           } else {
+               try {
+                   aridb.query("SELECT moonlight FROM members WHERE id = ?", [target.id], (err, result) => {
+                       if(result[0] == null) {
+                           message.reply("user `" + target.username + "` was not found on the server. :frowning:");
+                       } else if(result[0]['moonlight'] == 0) {
+                           message.reply(target.username + " doesn't have any Moonlight. :frowning:");
+                       } else {
+                           message.reply(target.username + " has `" + result[0]['moonlight'] + "` Moonlight!");
+                       }
+                   });
+               } catch(error) {
+                   console.log(error);
+                   message.reply("user `" + params + "` was not found on the server. :frowning:");
+               }
+           }
+           break;
+        case "!reward":
+            var notMentionedUser = command.slice(2, command.length).join(" ");
+            if(isMod(message)) {
+                if(command[1] == null) {
+                    message.reply("you didn't specify the amount of Moonlight you want to reward. Usage: `!reward <amount> <user>`");
+                } else if(command[2] == null) {
+                    message.reply("you didn't specify which user you want to reward Moonlight to. Usage: `!reward <amount> <user>`");
+                } else {
+                    try {
+                        aridb.query("SELECT moonlight FROM members WHERE id = ?", [target.id], (err, result) => {
+                                if(result[0] == null)
+                                    message.reply("user `" + target.username + "` was not found on the server. :frowning:");
+                        });
+                        aridb.query("UPDATE members SET moonlight = moonlight + ? WHERE id = ?", [command[1], target.id], (err, result) => {
+                            message.reply("rewarded `" + command[1] + "` Moonlight to " + target.username + ".");
+                        });
+                    } catch(error) {
+                        console.log(error);
+                        message.reply("user `" + notMentionedUser + "` was not found on the server. :frowning:");
+                    }
+                }
+            } else {
+                message.reply("lol no :rolling_eyes:");
+            }
+            break;
+    //mod commands
         case "!ban":
             try {
 	        if(isMod(message)) {
@@ -148,7 +267,6 @@ arianaBot.on ("message", message => {
                 } else {
                     try {
                         var evaled = eval(params);
-
                         if (typeof evaled !== "string")
                             evaled = require("util").inspect(evaled);
                             message.channel.sendMessage("```xl\n" + clean(evaled) + "\n```");
@@ -160,12 +278,32 @@ arianaBot.on ("message", message => {
                 message.reply("lol no :rolling_eyes:");
             }
             break;
+        case "!sql":
+            if(message.author.id == config.ownerID) { //we lock this command by ID to prevent unauthorized queries
+                aridb.query(params, function(err, result) {
+                    try {
+                        message.channel.sendMessage("```json\n" + JSON.stringify(result) + "\n```");
+                    } catch(err) {
+                        console.log(err);
+                    }
+                });
+            } else {
+                message.reply("lol no :rolling_eyes:");
+            }
+            break;
     }
 });
 
 arianaBot.on("guildMemberAdd", (member) => {
-    member.guild.channels.get(member.guild.id).sendMessage(member.user.username + " has joined the server! :smiley:");
-    modlog(member.user.username + " joined " + member.guild.name);
+    aridb.query("SELECT * FROM members WHERE id = ?", [member.user.id], function(err, result) {
+        if(result.length > 0) {
+            member.guild.channels.get(member.guild.id).sendMessage(member.user.username + " has rejoined the server! :smiley:");
+            modlog(member.user.username + " rejoined " + member.guild.name);
+        } else {
+            member.guild.channels.get(member.guild.id).sendMessage(member.user.username + " has joined the server! :smiley:");
+            modlog(member.user.username + " joined " + member.guild.name);
+        }
+    });
 });
 
 arianaBot.on("guildMemberRemove", (member) => {
@@ -282,7 +420,8 @@ function log(message) {
 }
 
 function modlog(message) {
-    arianaBot.channels.get("290575930131349514").sendMessage(message);
+//    arianaBot.channels.get("290575930131349514").sendMessage(message);
+    arianaBot.channels.get("285652431482650625").sendMessage(message);
     console.log(message);
 }
 

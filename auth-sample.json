@@ -1,4 +1,8 @@
 {
     "ownerID" : "",
+    "sqlHost" : "",
+    "sqlUser" : "",
+    "sqlPass" : "",
+    "sqlDB" : "",
     "token" : ""
 }
