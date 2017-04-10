@@ -370,17 +370,26 @@ function convertTimestamp(timestamp) {
 function favoriteAlbum(message) {
     var command = message.content.split(" ");
     var params = command.slice(1, command.length).join(" ");
-   
+  
+    var christmasAndChill = message.guild.roles.find("name", "Christmas & Chill"); 
     var dangerousWoman = message.guild.roles.find("name", "Dangerous Woman");
     var myEverything = message.guild.roles.find("name", "My Everything");
     var yoursTruly = message.guild.roles.find("name", "Yours Truly");
 
     if (command[1] == null) {
-        message.reply("you need to select your favorite album. Ariana's albums are: Dangerous Woman, My Everything, and Yours Truly.");
+        message.reply("you need to select your favorite album. Ariana's albums are: Dangerous Woman, My Everything, Yours Truly, and Christmas & Chill.");
         return;
     }
 
     switch(params.toLowerCase()) {
+        case "cc":
+        case "c&c":
+        case "christmas & chill":
+        case "christmas and chill":
+            message.member.addRole(christmasAndChill);
+            message.reply("your favorite album has been set to Christmas & Chill. :smiley:");
+            log(message.author.username + " has added themselves to the Christmas & Chill role.");
+            break;
 	case "dw":
         case "dangerous woman":
             message.member.addRole(dangerousWoman);
