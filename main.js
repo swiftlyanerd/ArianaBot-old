@@ -11,7 +11,7 @@ const aridb = mysql.createConnection({
 
 const arianaBot = new Discord.Client();
 
-var version = "2017.04.07a";
+var version = "2017.04.12a";
 
 var arianaSongs = ["Honeymoon Avenue", "Baby I", "Right There", "Tattooed Heart", "Lovin' It", "Piano", "Daydreamin'",
 "The Way", "You'll Never Know", "Almost Is Never Enough", "Popular Song", "Better Left Unsaid", "Intro", "Problem", "One Last Time",
@@ -60,7 +60,7 @@ arianaBot.on ("message", message => {
         case "!sinfo":
             var server = message.guild;
             message.channel.sendMessage("```xl\nServer Name: " + server.name +
-            "\nServer ID: " + server.id + "\nServer Owner: " + server.owner.user.username +
+            "\nServer ID: " + server.id + "\nServer Owner: " + server.owner.user.username + "#" + server.owner.user.discriminator +
             "\nMembers: " + server.memberCount + "\nChannels: " + server.channels.size +
             "\nRegion: " + server.region +  "```\n" + server.iconURL);
             break;
@@ -203,7 +203,7 @@ arianaBot.on ("message", message => {
 	        if (isMod(message)) {
 	            message.channel.overwritePermissions(target, {SEND_MESSAGES: false });
 		    message.reply(target.username + " was muted! :open_mouth:");
-		    modlog(target.username + " was muted by " + message.author.username + " in " + message.channel.name + ".");
+		    modlog(target.username + " was muted by " + message.author.username + " in <#" + message.channel.id + ">.");
 	        } else {
 		    message.reply("lol no :rolling_eyes:");
 	        } 
@@ -217,7 +217,7 @@ arianaBot.on ("message", message => {
 	        if (isMod(message)) {
 	            message.channel.overwritePermissions(target, {SEND_MESSAGES: null });
 		    message.reply(target.username + " was unmuted! :open_mouth:");
-		    modlog(target.username + " was unmuted by " + message.author.username + " in " + message.channel.name + ".");
+		    modlog(target.username + " was unmuted by " + message.author.username + " in <#" + message.channel.id + ">.");
 	        } else {
 		    message.reply("lol no :rolling_eyes:");
 	        }
@@ -229,7 +229,7 @@ arianaBot.on ("message", message => {
 	case "!setstatus":
 	    if (isMod(message)) {
 		arianaBot.user.setGame(params);
-		log(message.author.username + " has set my status to " + params);
+		modlog(message.author.username + " set my status to: " + params + ".");
 	    } else {
 		message.reply("lol no :rolling_eyes:");
 	    }
@@ -238,7 +238,7 @@ arianaBot.on ("message", message => {
 	    if(isMod(message)) {
 	        message.channel.setTopic(params);
 		message.reply("topic updated.");
-		log(message.author.username + " changed the topic in " + message.channel.name + " to " + params);
+		modlog(message.author.username + " changed the topic in <#" + message.channel.id + "> to: " + params + ".");
 		} else {
 		    message.reply("lol no :rolling_eyes:");
 		}
@@ -252,6 +252,7 @@ arianaBot.on ("message", message => {
         //admin commands
 	case "!restart":
             if(message.member.roles.exists("name", "Moonlight")) {
+                message.reply("Restarting... :robot:");
 		log("I was restarted by " + message.author.username + ".");
 	        process.exit(-1);
 	    } else {
@@ -280,7 +281,7 @@ arianaBot.on ("message", message => {
             break;
         case "!sql":
             if(message.author.id == config.ownerID) { //we lock this command by ID to prevent unauthorized queries
-                aridb.query(params, function(err, result) {
+                aridb.query(params, (err, result) => {
                     try {
                         message.channel.sendMessage("```json\n" + JSON.stringify(result) + "\n```");
                     } catch(err) {
@@ -320,12 +321,16 @@ function clean(text) {
 
 function clearAlbum(message) {
     var roles = message.member.roles;
+    var christmasAndChill = message.guild.roles.find("name", "Christmas & Chill");
     var dangerousWoman = message.guild.roles.find("name", "Dangerous Woman");
     var myEverything = message.guild.roles.find("name", "My Everything");
     var yoursTruly = message.guild.roles.find("name", "Yours Truly");
 
     roles.forEach(function (role) {
         switch(role.name) {
+            case "Christmas & Chill":
+	        message.member.removeRole(christmasAndChill);
+		break;
 	    case "Dangerous Woman":
 	        message.member.removeRole(dangerousWoman);
 		break;
@@ -424,13 +429,12 @@ function isMod(message) {
 }
 
 function log(message) {
-    arianaBot.users.get("147109473155022848").sendMessage(message);
+    arianaBot.users.get(config.ownerID).sendMessage(message);
     console.log(message);
 }
 
 function modlog(message) {
-//    arianaBot.channels.get("290575930131349514").sendMessage(message);
-    arianaBot.channels.get("285652431482650625").sendMessage(message);
+    arianaBot.channels.get(config.logChannel).sendMessage(message);
     console.log(message);
 }
 
